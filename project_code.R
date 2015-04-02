@@ -48,7 +48,7 @@ qplot(log(count), data=data, geom="histogram",binwidth=.01)
 
 # Regression - exploration of discrete variables
 g = ggplot(data, aes(tod, count, fill=season))
-g+geom_boxplot()
+g+geom_boxplot() #+scale_fill_manual(name="Season and Time of Day Demand", pallete="Blues")
 
 g = ggplot(data, aes(tod, count, fill=weather))
 g+geom_boxplot()
