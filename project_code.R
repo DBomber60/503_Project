@@ -74,7 +74,7 @@ ggplot(data, aes(x=count, y=windspeed)) +
 # function to evaluate model fit
 rmse = function(x,y) sqrt(mean((x-y)^2))
 
-# multpiple linear regression
+# multpiple linear regression - count as response variable
 m1 = lm(count~season+tod+weather+temp+humidity+windspeed, data=train)
 summary(m1)
 qplot(m1$fitted, m1$residual, xlab="Fitted", ylab="Residuals")+geom_abline(intercept=0,slope=0,colour="red",size=2)
@@ -83,15 +83,21 @@ rmse(predict(m1,test[,c(2,16,5,6,8,9)]), test$count)
 qplot(m1$fit, train$count)
 qplot(predict(m1,test[,c(2,16,5,6,8,9)]), test$count)
 
-# principal components regression
-pcrg = pcr(count~season+tod+weather+temp+humidity+windspeed, data=train, validation="CV")
-rmseCV = RMSEP(pcrg, estimate="CV",intercept=F)
-which.min(rmseCV$val) # use cross validation to choose number of components
-pcrpred.tr = predict(pcrg, newdata=train[,c(2,16,5,6,8,9)], ncomp=12)
-rmse(pcrpred.tr, train$count)
-pcrpred.test = predict(pcrg, newdata=test[,c(2,16,5,6,8,9)], ncomp=12)
-rmse(pcrpred.test, test$count)
-qplot(pcrpred.test, test$count) # to fix
+# multpiple linear regression - casual+registered as response variable
+lm_casual = lm(casual~season+tod+weather+temp+humidity+windspeed, data=train)
+summary(lm_casual)
+lm_registered = lm(registered~season+tod+weather+temp+humidity+windspeed, data=train)
+summary(lm_registered)
+qplot(m1$fitted, m1$residual, xlab="Fitted", ylab="Residuals")+geom_abline(intercept=0,slope=0,colour="red",size=2)
+rmse(lm_casual$fit+lm_registered$fit, train$count)
+casual_predict = predict(lm_casual, test[,c(2,16,5,6,8,9)])
+registered_predict = predict(lm_registered, test[,c(2,16,5,6,8,9)])
+rmse(casual_predict+registered_predict, test$count)
+qplot(m1$fit, train$casual)
+qplot(predict(m1,test[,c(2,16,5,6,8,9)]), test$count)
+
+
+
 
 # regression tree
 reg_tree = tree(count~season+tod+weather+temp+humidity+windspeed, method="anova",data=train)
@@ -105,6 +111,18 @@ yhat= predict(reg_tree, newdata=test[,c(2,16,5,6,8,9)])
 rmse(yhat, test$count)
 qplot(yhat, test$count)
 
+# regression tree - individual predictions
+c_reg_tree = tree(casual~season+tod+weather+temp+humidity+windspeed, method="anova",data=train)
+r_reg_tree = tree(registered~season+tod+weather+temp+humidity+windspeed, method="anova",data=train)
+cyhat= predict(c_reg_tree, newdata=train[,c(2,16,5,6,8,9)])
+ryhat= predict(r_reg_tree, newdata=train[,c(2,16,5,6,8,9)])
+rmse(cyhat+ryhat, train$count)
+c_yhat= predict(c_reg_tree, newdata=test[,c(2,16,5,6,8,9)])
+r_yhat= predict(r_reg_tree, newdata=test[,c(2,16,5,6,8,9)])
+rmse(c_yhat+r_yhat, test$count)
+tot = c_yhat+r_yhat
+qplot(tot, test$count)
+
 # poisson regression
 poisrg = glm(count~season+tod+weather+temp+humidity+windspeed, data=train, family=poisson)
 summary(poisrg)
@@ -114,3 +132,19 @@ rmse(poisrg$fit, train$count)
 qplot(poisrg$fit, train$count)
 rmse(exp(predict(poisrg,test[,c(2,16,5,6,8,9)])), test$count)
 qplot(exp(predict(poisrg,test[,c(2,16,5,6,8,9)])), test$count)
+
+# poisson regression - individual predictions
+c_poisrg = glm(casual~season+tod+weather+temp+humidity+windspeed, data=train, family=poisson)
+r_poisrg = glm(registered~season+tod+weather+temp+humidity+windspeed, data=train, family=poisson)
+summary(poisrg)
+# does the model fit well?
+1-pchisq(593704, 9783)
+rmse((c_poisrg$fit+r_poisrg$fit), train$count)
+qplot(poisrg$fit, train$count)
+c_yhat= exp(predict(c_poisrg, newdata=test[,c(2,16,5,6,8,9)]))
+r_yhat= exp(predict(r_poisrg, newdata=test[,c(2,16,5,6,8,9)]))
+rmse(c_yhat+r_yhat, test$count)
+tot = c_yhat+r_yhat
+qplot(tot, test$count)
+
+
